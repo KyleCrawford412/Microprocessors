@@ -29,90 +29,119 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * --/COPYRIGHT--*/
+/* ---------------------------------------------------------
+    Kyle Crawford
+    Fall 2020
+    Section 3
+    HW 5
+* ---------------------------------------------------------- */
 
-
-//include files
+// Includes
 #include "driverlib.h"
-#include <stdio.h>
 #include <stdint.h>
-#include <HAL_UART_4746.h>
+#include <stdio.h>
 
-//function prototypes
-bool checkPrime(uint16_t x);
+// Defines
+#define SEED 'C'
+#define GETLOWER 0b0000000011111111
+#define LED2PORT GPIO_PORT_P1
+#define LED2PIN GPIO_PIN1
 
 
-//checkPrime
-//Inputs: usigned 16 bit
-//outputs: bool
-//returns true if number is a prime, false if number is not a prime
-bool checkPrime(uint16_t x){
 
-    //variables
-    uint16_t i;
+uint8_t myData(uint8_t, int16_t*);
 
-    //special cases
-    if((x == 0) || (x == 1)){
-        return false;
-    }
-    else if((x == 2) || (x == 3)){
-        return true;
-    }
-    else{
-        for(i = 4; i<= x; i++){
-            if(x%i == 0){
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-//main
 void main (void){
 
-    //define variables
-    uint8_t i = 0;
-    uint16_t ii, maxNum = 0;
-    volatile static uint16_t numPrimes = 0;
-    char buffer[100];
+    // Define and Initialize Local Variables
+    int16_t data;
+    int8_t aOUT[5] = {0,0,0,0,0};
+    int8_t upper = 0;
+    int8_t lower = 0;
+    int16_t q1x = 0, q1y = 0, q2x = 0, q2y = 0, q3x = 0, q3y = 0, q4x = 0, q4y = 0, xAxis = 0, yAxis = 0;
+    float totalX = 0, totalY = 0;
+    float avgQ1x, avgQ1y, avgQ2x, avgQ2y, avgQ3x, avgQ3y, avgQ4x, avgQ4y;
 
-    //hold WDT
+    // Hold Watch Dog Timer
     WDT_A_hold(WDT_A_BASE);
 
-    UART_initGPIO();
-    UART_init();
-    _delay_cycles(500000);
+    // Configure and Activate I/O
+    GPIO_setAsOutputPin(LED2PORT,LED2PIN);
+    GPIO_setOutputLowOnPin(LED2PORT,LED2PIN);
 
-    //print
-    sprintf(buffer, "Kyle Crawford \r\n");
-    UART_transmitString(buffer);
-    UART_transmitString("Fall 2020\r\n");
+    PMM_unlockLPM5();
 
+    myData(SEED, &data);
 
-    //loop i from 0 to 10
-    for(i = 0; i <= 10; i++){
-        maxNum = 500*(1+2*i);
-        //check all the numbers
-        for(ii = 0; ii <= maxNum; ii++){
-            //check for prime number
-            if(checkPrime(ii)){
-                numPrimes++;
-            }
+    myData(4, &data);
+
+    while(data != 0){
+
+        upper = (int8_t)(data >> 8);    // shifts bits of data to right converts to signed 8bit
+        lower = (int8_t)(data & GETLOWER);   // Bitwise AND with GETLOWER and converts to signed 8 bit
+
+        if((upper > 0) && (lower > 0)){
+            // ++ Quadrant 4 (Pos , Pos) A
+            q1x += upper;
+            q1y += lower;
+            aOUT[4]++;
         }
-        //print results and reset count
-        sprintf(buffer, "Number of primes: %d\r\n", numPrimes);
-        UART_transmitString(buffer);
-        numPrimes = 0;
+        else if((upper < 0) && (lower < 0)){
+            // -- Quadrant 3 (Neg , Neg) C
+            q3x += upper;
+            q3y += lower;
+            aOUT[3]++;
+        }
+        else if((upper < 0) && (lower > 0)){
+            // -+ Quadrant 2 (Neg , Pos) B
+            q2x += upper;
+            q2y += lower;
+            aOUT[2]++;
+        }
+        else if((upper > 0) && (lower < 0)){
+            // +- Quadrant 1 (Pos , Neg) D
+            q4x += upper;
+            q4y += lower;
+            aOUT[1]++;
+        }
+
+        myData(4, &data);
+
     }
 
+    //calculate averages for each quadrant's x and y
+    avgQ1x = ((float)q1x) / ((float)aOUT[4]);
+    avgQ1y = ((float)q1y) / ((float)aOUT[4]);
+    avgQ2x = ((float)q2x) / ((float)aOUT[2]);
+    avgQ2y = ((float)q2y) / ((float)aOUT[2]);
+    avgQ3x = ((float)q3x) / ((float)aOUT[3]);
+    avgQ3y = ((float)q3y) / ((float)aOUT[3]);
+    avgQ4x = ((float)q4x) / ((float)aOUT[1]);
+    avgQ4y = ((float)q4y) / ((float)aOUT[1]);
+
+    //calculate the sum of all x and y points to find average
+    totalX = ((float)q1x + (float)q2x + (float)q3x + (float)q4x) / ((float)aOUT[1] + (float)aOUT[2] + (float)aOUT[3] + (float)aOUT[4]);
+    totalY = ((float)q1y + (float)q2y + (float)q3y + (float)q4y) / ((float)aOUT[1] + (float)aOUT[2] + (float)aOUT[3] + (float)aOUT[4]);
+
+   // Printing Header and Information
+   puts("Kyle Crawford");
+   puts("Fall 2020");
+   puts("CHW#5");
+   printf("My seed value is: %c\n", SEED);
+   puts("Quad#, Avg X, Avg Y");
+
+   printf("A: x%.1f, y%.1f\n", avgQ1x, avgQ1y);
+   printf("B: x%.1f, y%.1f\n", avgQ2x, avgQ2y);
+   printf("C: x%.1f, y%.1f\n", avgQ3x, avgQ3y);
+   printf("D: x%.1f, y%.1f\n", avgQ4x, avgQ4y);
+   printf("All: x%.1f, y%.1f\n", totalX, totalY);
 
 
-    sprintf(buffer, "Number of primes: %d\r\n", numPrimes);
-    UART_transmitString(buffer);
 
+   // Turn on LED2
+   GPIO_setOutputHighOnPin(LED2PORT,LED2PIN);
 
-    //spin
-    while(1);
+   // Spin
+   while(1);
 
 }
-
