@@ -29,90 +29,78 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * --/COPYRIGHT--*/
-
-
-//include files
 #include "driverlib.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <HAL_UART_4746.h>
 
-//function prototypes
-bool checkPrime(uint16_t x);
+typedef enum {Red, Green, Blue, Cyan, Yellow, Magenta, White, Off} LedColors;
 
+//function definitions
+void rgbDriver(LedColors color);
+void config_mkII();
 
-//checkPrime
-//Inputs: usigned 16 bit
-//outputs: bool
-//returns true if number is a prime, false if number is not a prime
-bool checkPrime(uint16_t x){
+void main (void)
+{
+}
 
-    //variables
-    uint16_t i;
-
-    //special cases
-    if((x == 0) || (x == 1)){
-        return false;
-    }
-    else if((x == 2) || (x == 3)){
-        return true;
-    }
-    else{
-        for(i = 4; i<= x; i++){
-            if(x%i == 0){
-                return false;
-            }
-        }
-        return true;
+void rgbDriver(LedColors color){
+    switch(color){
+    case Red:
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Green:
+        GPIO_setOutputLowhOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Blue:
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Cyan:
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Yellow:
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Magenta:
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case White:
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
+    case Off:
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN6);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN5);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN4);
+        break;
     }
 }
 
-//main
-void main (void){
+void config_mkII(){
+    //set red LED
+    GPIO_setAsOutputPin(GPIO_PORT_J4, GPIO_PIN39);
+    //set green LED
+    GPIO_setAsOutputPin(GPIO_PORT_J4, GPIO_PIN38);
+    //set blue LED
+    GPIO_setAsOutputPin(GPIO_PORT_J4, GPIO_PIN37);
 
-    //define variables
-    uint8_t i = 0;
-    uint16_t ii, maxNum = 0;
-    volatile static uint16_t numPrimes = 0;
-    char buffer[100];
+    //set pushbuttons with pull up resistors
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_J4, GPIO_PIN33);
+    GPIO_setAsInputPinWithPullUpResistor(GPIO_PORT_J4, GPIO_PIN32);
 
-    //hold WDT
-    WDT_A_hold(WDT_A_BASE);
+    //unlock LPM5
+    PMM_unlockLPM5();
 
-    UART_initGPIO();
-    UART_init();
-    _delay_cycles(500000);
-
-    //print
-    sprintf(buffer, "Kyle Crawford \r\n");
-    UART_transmitString(buffer);
-    UART_transmitString("Fall 2020\r\n");
-
-
-    //loop i from 0 to 10
-    for(i = 0; i <= 10; i++){
-        maxNum = 500*(1+2*i);
-        //check all the numbers
-        for(ii = 0; ii <= maxNum; ii++){
-            //check for prime number
-            if(checkPrime(ii)){
-                numPrimes++;
-            }
-        }
-        //print results and reset count
-        sprintf(buffer, "Number of primes: %d\r\n", numPrimes);
-        UART_transmitString(buffer);
-        numPrimes = 0;
-    }
-
-
-
-    sprintf(buffer, "Number of primes: %d\r\n", numPrimes);
-    UART_transmitString(buffer);
-
-
-    //spin
-    while(1);
-
+    //turn off LEDs
+    rgbDriver(off);
 }
-
